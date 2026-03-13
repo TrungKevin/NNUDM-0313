@@ -47,5 +47,34 @@ router.get('/me',checkLogin,function(req,res,next){
     res.send(req.user)
 })
 
+// Change password endpoint
+const { body } = require('express-validator')
+router.put('/changepassword',
+    checkLogin,
+    body('newpassword').isStrongPassword({
+        minLength: 8,
+        minLowercase: 1,
+        minNumbers: 1,
+        minUppercase: 1,
+        minSymbols: 1
+    }).withMessage('Mật khẩu mới phải đủ mạnh!'),
+    async function(req, res, next) {
+        const { oldpassword, newpassword } = req.body;
+        const user = req.user;
+        const bcrypt = require('bcrypt');
+        // Kiểm tra dữ liệu đầu vào
+        if (!oldpassword || !newpassword || !user || !user.password) {
+            return res.status(400).send({ message: 'Thiếu dữ liệu!' });
+        }
+        // Kiểm tra oldpassword
+        if (!bcrypt.compareSync(oldpassword, user.password)) {
+            return res.status(400).send({ message: 'Mật khẩu cũ không đúng!' });
+        }
+        // Hash và cập nhật mật khẩu mới
+        user.password = bcrypt.hashSync(newpassword, 10);
+        await user.save();
+        res.send({ message: 'Đổi mật khẩu thành công!' });
+    }
+)
 
 module.exports = router;
